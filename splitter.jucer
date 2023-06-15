@@ -17,7 +17,7 @@
   <EXPORTFORMATS>
     <VS2022 targetFolder="Builds/DebugVisualStudio2022" externalLibraries="tensorflow.lib;&#10;spleeter_filter.lib;&#10;spleeter_common.lib;&#10;rtffd.lib;&#10;artff.lib;&#10;mkl_core.lib;&#10;mkl_intel_lp64.lib;&#10;mkl_sequential.lib;">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="splitter" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot;;&#10;xcopy &quot;../../external/spleeterpp/build/Debug/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y;"
+        <CONFIGURATION isDebug="1" name="Debug" targetName="splitter" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot; &amp;&amp; xcopy &quot;../../external/spleeterpp/build/Debug/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y"
                        libraryPath="..\..\external\spleeterpp\build\Debug\install\lib;"
                        headerPath="..\..\external\spleeterpp\build\Debug\install\include;&#10;..\..\external\eigen;"/>
       </CONFIGURATIONS>
@@ -38,7 +38,7 @@
     </VS2022>
     <VS2022 targetFolder="Builds/ReleaseVisualStudio2022" externalLibraries="tensorflow.lib;&#10;spleeter_filter.lib;&#10;spleeter_common.lib;&#10;rtff.lib;&#10;artff.lib;&#10;mkl_core.lib;&#10;mkl_intel_lp64.lib;&#10;mkl_sequential.lib;">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="0" name="Release" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot;&#10;xcopy &quot;../../external/spleeterpp/build/Release/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y"
+        <CONFIGURATION isDebug="0" name="Release" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot; &amp;&amp; xcopy &quot;../../external/spleeterpp/build/Release/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y"
                        headerPath="..\..\external\spleeterpp\build\Release\install\include;&#10;..\..\external\eigen;"
                        libraryPath="..\..\external\spleeterpp\build\Release\install\lib;"/>
       </CONFIGURATIONS>
