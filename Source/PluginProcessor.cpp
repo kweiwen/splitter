@@ -18,14 +18,14 @@ SplitterAudioProcessor::SplitterAudioProcessor()
     : AudioProcessor(BusesProperties()
 #if !JucePlugin_IsMidiEffect
 #if !JucePlugin_IsSynth
-                         .withInput("Input", juce::AudioChannelSet::stereo(), true)
+        .withInput("Input", juce::AudioChannelSet::stereo(), true)
 #endif
-                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
-                         )
+    )
 #endif
-      ,
-      m_filter(nullptr), m_buffer(nullptr)
+    ,
+    m_filter(nullptr), m_buffer(nullptr)
 {
     addParameter(channel0 = new juce::AudioParameterFloat("0x00", "ch0", 0.0f, 1.0f, 1.0f));
     addParameter(channel1 = new juce::AudioParameterFloat("0x01", "ch1", 0.0f, 1.0f, 1.0f));
@@ -33,226 +33,257 @@ SplitterAudioProcessor::SplitterAudioProcessor()
     addParameter(channel3 = new juce::AudioParameterFloat("0x03", "ch3", 0.0f, 1.0f, 1.0f));
     addParameter(channel4 = new juce::AudioParameterFloat("0x04", "ch4", 0.0f, 1.0f, 1.0f));
 
-  std::error_code err;
-  auto models_path =
+    std::error_code err;
+    auto models_path =
 #ifdef OSX
-      juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getParentDirectory().getChildFile("Resources")
+        juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getParentDirectory().getChildFile("Resources")
 #endif 
-      juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
+        juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
 
-  spleeter::Initialize(models_path.toStdString(),{spleeter::SeparationType::FiveStems}, err);
-  m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::FiveStems);
-  m_filter->set_extra_frame_latency(20);  // TODO: might be a lot...
-  m_filter->Init(err);
+    spleeter::Initialize(models_path.toStdString(), { spleeter::SeparationType::FiveStems }, err);
+    m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::FiveStems);
+    m_filter->set_extra_frame_latency(20);  // TODO: might be a lot...
+    m_filter->Init(err);
 }
 
-SplitterAudioProcessor::~SplitterAudioProcessor() {}
+SplitterAudioProcessor::~SplitterAudioProcessor() 
+{
+}
 
 //==============================================================================
-const juce::String SplitterAudioProcessor::getName() const {
-  return JucePlugin_Name;
+const juce::String SplitterAudioProcessor::getName() const 
+{
+    return JucePlugin_Name;
 }
 
-bool SplitterAudioProcessor::acceptsMidi() const {
+bool SplitterAudioProcessor::acceptsMidi() const 
+{
 #if JucePlugin_WantsMidiInput
-  return true;
+    return true;
 #else
-  return false;
+    return false;
 #endif
 }
 
-bool SplitterAudioProcessor::producesMidi() const {
+bool SplitterAudioProcessor::producesMidi() const 
+{
 #if JucePlugin_ProducesMidiOutput
-  return true;
+    return true;
 #else
-  return false;
+    return false;
 #endif
 }
 
-bool SplitterAudioProcessor::isMidiEffect() const {
+bool SplitterAudioProcessor::isMidiEffect() const 
+{
 #if JucePlugin_IsMidiEffect
-  return true;
+    return true;
 #else
-  return false;
+    return false;
 #endif
 }
 
-double SplitterAudioProcessor::getTailLengthSeconds() const { return 0.0; }
-
-int SplitterAudioProcessor::getNumPrograms() {
-  return 1; // NB: some hosts don't cope very well if you tell them there are 0
-            // programs,
-  // so this should be at least 1, even if you're not really implementing
-  // programs.
+double SplitterAudioProcessor::getTailLengthSeconds() const 
+{ 
+    return 0.0; 
 }
 
-int SplitterAudioProcessor::getCurrentProgram() { return 0; }
+int SplitterAudioProcessor::getNumPrograms() 
+{
+    return 1; 
+    // NB: some hosts don't cope very well if you tell them there are 0 programs,
+    // so this should be at least 1, even if you're not really implementing programs.
+}
 
-void SplitterAudioProcessor::setCurrentProgram(int index) {}
+int SplitterAudioProcessor::getCurrentProgram() 
+{ 
+    return 0; 
+}
 
-const juce::String SplitterAudioProcessor::getProgramName(int index) { return {}; }
+void SplitterAudioProcessor::setCurrentProgram(int index) 
+{
+}
 
-void SplitterAudioProcessor::changeProgramName(int index,
-                                                  const juce::String &newName) {}
+const juce::String SplitterAudioProcessor::getProgramName(int index) 
+{ 
+    return {}; 
+}
+
+void SplitterAudioProcessor::changeProgramName(int index, const juce::String& newName) 
+{
+}
 
 //==============================================================================
-void SplitterAudioProcessor::prepareToPlay(double sampleRate,
-                                              int samplesPerBlock) {
-  // resample to 44100Hz
-  m_in_interpolator.clear();
-  m_out_interpolator.clear();
-  for (auto channel_idx = 0; channel_idx < getTotalNumInputChannels(); channel_idx++) {
-    m_in_interpolator.push_back(juce::LagrangeInterpolator());
-    m_out_interpolator.push_back(juce::LagrangeInterpolator());
-  }
-  auto desired_interpolation_ratio = 44100 / sampleRate;
-  int block_size = samplesPerBlock * desired_interpolation_ratio;
-  m_interpolation_ratio = static_cast<float>(block_size) / samplesPerBlock;
-  
-  // Initialize the buffer
-  m_filter->set_volume(0, 1.0);
-  m_filter->set_volume(1, 1.0);
-  m_filter->set_volume(2, 1.0);
-  m_filter->set_volume(3, 1.0);
-  m_filter->set_volume(4, 1.0);
-  m_filter->set_block_size(block_size);
-  m_buffer = std::make_shared<rtff::AudioBuffer>(block_size, 2);
-  
-  // Latency
-  setLatencySamples(m_filter->FrameLatency() * (1.0 / m_interpolation_ratio));
+void SplitterAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) 
+{
+    // resample to 44100Hz
+    m_in_interpolator.clear();
+    m_out_interpolator.clear();
+    for (auto channel_idx = 0; channel_idx < getTotalNumInputChannels(); channel_idx++) 
+    {
+        m_in_interpolator.push_back(juce::LagrangeInterpolator());
+        m_out_interpolator.push_back(juce::LagrangeInterpolator());
+    }
+    auto desired_interpolation_ratio = 44100 / sampleRate;
+    int block_size = samplesPerBlock * desired_interpolation_ratio;
+    m_interpolation_ratio = static_cast<float>(block_size) / samplesPerBlock;
+
+    // Initialize the buffer
+    m_filter->set_volume(0, 1.0);
+    m_filter->set_volume(1, 1.0);
+    m_filter->set_volume(2, 1.0);
+    m_filter->set_volume(3, 1.0);
+    m_filter->set_volume(4, 1.0);
+    m_filter->set_block_size(block_size);
+    m_buffer = std::make_shared<rtff::AudioBuffer>(block_size, 2);
+
+    // Latency
+    setLatencySamples(m_filter->FrameLatency() * (1.0 / m_interpolation_ratio));
 }
 
-void SplitterAudioProcessor::releaseResources() {
-  // When playback stops, you can use this as an opportunity to free up any
-  // spare memory, etc.
+void SplitterAudioProcessor::releaseResources() 
+{
+    // When playback stops, you can use this as an opportunity to free up any
+    // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool SplitterAudioProcessor::isBusesLayoutSupported(
-    const BusesLayout &layouts) const {
+bool SplitterAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const 
+{
 #if JucePlugin_IsMidiEffect
-  ignoreUnused(layouts);
-  return true;
+    ignoreUnused(layouts);
+    return true;
 #else
-  // This is the place where you check if the layout is supported.
-  // In this template code we only support mono or stereo.
-  if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono() &&
-      layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-    return false;
-
-// This checks if the input layout matches the output layout
+    // This is the place where you check if the layout is supported.
+    // In this template code we only support mono or stereo.
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono() 
+        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+    // This checks if the input layout matches the output layout
 #if !JucePlugin_IsSynth
-  if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-    return false;
+    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+        return false;
 #endif
-
-  return true;
+    return true;
 #endif
 }
 #endif
 
-void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
-    juce::MidiBuffer &midiMessages) {
+void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) 
+{
     juce::ScopedNoDenormals noDenormals;
-  auto totalNumInputChannels = getTotalNumInputChannels();
-  auto totalNumOutputChannels = getTotalNumOutputChannels();
+    auto totalNumInputChannels = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-  // In case we have more outputs than inputs, this code clears any output
-  // channels that didn't contain input data, (because these aren't
-  // guaranteed to be empty - they may contain garbage).
-  // This is here to avoid people getting screaming feedback
-  // when they first compile a plugin, but obviously you don't need to keep
-  // this code if your algorithm always overwrites all the output channels.
-  for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-    buffer.clear(i, 0, buffer.getNumSamples());
+    // In case we have more outputs than inputs, this code clears any output
+    // channels that didn't contain input data, (because these aren't
+    // guaranteed to be empty - they may contain garbage).
+    // This is here to avoid people getting screaming feedback
+    // when they first compile a plugin, but obviously you don't need to keep
+    // this code if your algorithm always overwrites all the output channels.
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
 
-  // This is the place where you'd normally do the guts of your plugin's
-  // audio processing...
-  // Make sure to reset the state if your inner loop is processing
-  // the samples and the outer loop is handling the channels.
-  // Alternatively, you can process the samples with the channels
-  // interleaved by keeping the same state.
-  
-  
-  // TODO: factorize !
-  if (totalNumInputChannels == 2) {
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      float *channelData = buffer.getWritePointer(channel);
-      m_in_interpolator[channel].process(1.0 / m_interpolation_ratio, channelData, m_buffer->data(channel), m_buffer->frame_count(), buffer.getNumSamples(), 0);
-//      memcpy(m_buffer->data(channel), channelData, m_buffer->frame_count() * sizeof(float));
-    }
-  } else {
-    // For any other case than stereo, sum in the first channel
-    // -- cleanup
-    memset(m_buffer->data(0), 0, m_buffer->frame_count() * sizeof(float));
-    memset(m_buffer->data(1), 0, m_buffer->frame_count() * sizeof(float));
+    // This is the place where you'd normally do the guts of your plugin's
+    // audio processing...
+    // Make sure to reset the state if your inner loop is processing
+    // the samples and the outer loop is handling the channels.
+    // Alternatively, you can process the samples with the channels
+    // interleaved by keeping the same state.
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      // -- interpolate input data in channel 0
-      float *channelData = buffer.getWritePointer(channel);
-      m_in_interpolator[channel].process(1.0 / m_interpolation_ratio, channelData, m_buffer->data(0), m_buffer->frame_count(), buffer.getNumSamples(), 0);
-      // -- store the sum in channel 1
-      Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array() += Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array();
+
+    // TODO: factorize !
+    if (totalNumInputChannels == 2) 
+    {
+        for (int channel = 0; channel < totalNumInputChannels; ++channel) 
+        {
+            float* channelData = buffer.getWritePointer(channel);
+            m_in_interpolator[channel].process(1.0 / m_interpolation_ratio, channelData, m_buffer->data(channel), m_buffer->frame_count(), buffer.getNumSamples(), 0);
+            //memcpy(m_buffer->data(channel), channelData, m_buffer->frame_count() * sizeof(float));
+        }
     }
-    // divide by the number of channels
-    Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array() /= totalNumInputChannels;
-    // copy channel 1 in others
-    Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()) - Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count());
-  }
-  
-  // convert to stereo
-  m_filter->set_volume(0, static_cast<double>(channel0->get()));
-  m_filter->set_volume(1, static_cast<double>(channel1->get()));
-  m_filter->set_volume(2, static_cast<double>(channel2->get()));
-  m_filter->set_volume(3, static_cast<double>(channel3->get()));
-  m_filter->set_volume(4, static_cast<double>(channel4->get()));
-  m_filter->ProcessBlock(m_buffer.get());
-  
-  if (totalNumInputChannels == 2) {
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      float *channelData = buffer.getWritePointer(channel);
-      m_out_interpolator[channel].process(m_interpolation_ratio, m_buffer->data(channel), channelData, buffer.getNumSamples(), m_buffer->frame_count(), 0);
-      
-//      memcpy(channelData, m_buffer->data(channel), m_buffer->frame_count() * sizeof(float));
+    else 
+    {
+        // For any other case than stereo, sum in the first channel
+        // -- cleanup
+        memset(m_buffer->data(0), 0, m_buffer->frame_count() * sizeof(float));
+        memset(m_buffer->data(1), 0, m_buffer->frame_count() * sizeof(float));
+
+        for (int channel = 0; channel < totalNumInputChannels; ++channel) 
+        {
+            // -- interpolate input data in channel 0
+            float* channelData = buffer.getWritePointer(channel);
+            m_in_interpolator[channel].process(1.0 / m_interpolation_ratio, channelData, m_buffer->data(0), m_buffer->frame_count(), buffer.getNumSamples(), 0);
+            // -- store the sum in channel 1
+            Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array() += Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array();
+        }
+        // divide by the number of channels
+        Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array() /= totalNumInputChannels;
+        // copy channel 1 in others
+        Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()) - Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count());
     }
-  } else {
-    // TODO: move to another location
-    // For any other case than stereo, sum the result in channel 0 and divide by two
-    Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array() += Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array();
-    Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array() /= 2;
-    // Copy in each channel
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      float *channelData = buffer.getWritePointer(channel);
-      m_out_interpolator[channel].process(m_interpolation_ratio, m_buffer->data(0), channelData, buffer.getNumSamples(), m_buffer->frame_count(), 0);
+
+    // convert to stereo
+    m_filter->set_volume(0, static_cast<double>(channel0->get()));
+    m_filter->set_volume(1, static_cast<double>(channel1->get()));
+    m_filter->set_volume(2, static_cast<double>(channel2->get()));
+    m_filter->set_volume(3, static_cast<double>(channel3->get()));
+    m_filter->set_volume(4, static_cast<double>(channel4->get()));
+    m_filter->ProcessBlock(m_buffer.get());
+
+    if (totalNumInputChannels == 2) 
+    {
+        for (int channel = 0; channel < totalNumInputChannels; ++channel) 
+        {
+            float* channelData = buffer.getWritePointer(channel);
+            m_out_interpolator[channel].process(m_interpolation_ratio, m_buffer->data(channel), channelData, buffer.getNumSamples(), m_buffer->frame_count(), 0);
+            //memcpy(channelData, m_buffer->data(channel), m_buffer->frame_count() * sizeof(float));
+        }
     }
-  }
+    else 
+    {
+        // TODO: move to another location
+        // For any other case than stereo, sum the result in channel 0 and divide by two
+        Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array() += Eigen::Map<Eigen::VectorXf>(m_buffer->data(1), m_buffer->frame_count()).array();
+        Eigen::Map<Eigen::VectorXf>(m_buffer->data(0), m_buffer->frame_count()).array() /= 2;
+        // Copy in each channel
+        for (int channel = 0; channel < totalNumInputChannels; ++channel) 
+        {
+            float* channelData = buffer.getWritePointer(channel);
+            m_out_interpolator[channel].process(m_interpolation_ratio, m_buffer->data(0), channelData, buffer.getNumSamples(), m_buffer->frame_count(), 0);
+        }
+    }
 }
 
 //==============================================================================
-bool SplitterAudioProcessor::hasEditor() const {
-  return true; // (change this to false if you choose to not supply an editor)
+bool SplitterAudioProcessor::hasEditor() const 
+{
+    return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor *SplitterAudioProcessor::createEditor() {
-  return new SplitterAudioProcessorEditor(*this);
+juce::AudioProcessorEditor* SplitterAudioProcessor::createEditor() 
+{
+    return new SplitterAudioProcessorEditor(*this);
 }
 
 //==============================================================================
-void SplitterAudioProcessor::getStateInformation(juce::MemoryBlock &destData) {
-  // You should use this method to store your parameters in the memory block.
-  // You could do that either as raw data, or use the XML or ValueTree classes
-  // as intermediaries to make it easy to save and load complex data.
+void SplitterAudioProcessor::getStateInformation(juce::MemoryBlock& destData) 
+{
+    // You should use this method to store your parameters in the memory block.
+    // You could do that either as raw data, or use the XML or ValueTree classes
+    // as intermediaries to make it easy to save and load complex data.
 }
 
-void SplitterAudioProcessor::setStateInformation(const void *data,
-                                                    int sizeInBytes) {
-  // You should use this method to restore your parameters from this memory
-  // block,
-  // whose contents will have been created by the getStateInformation() call.
+void SplitterAudioProcessor::setStateInformation(const void* data, int sizeInBytes) 
+{
+    // You should use this method to restore your parameters from this memory
+    // block,
+    // whose contents will have been created by the getStateInformation() call.
 }
 
 //==============================================================================
 // This creates new instances of the plugin..
-juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() {
-  return new SplitterAudioProcessor();
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() 
+{
+    return new SplitterAudioProcessor();
 }
