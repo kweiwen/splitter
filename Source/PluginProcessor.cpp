@@ -13,19 +13,10 @@
 #include "spleeter_common/spleeter_common.h"
 
 //==============================================================================
-SplitterAudioProcessor::SplitterAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
-    : AudioProcessor(BusesProperties()
-#if !JucePlugin_IsMidiEffect
-#if !JucePlugin_IsSynth
+SplitterAudioProcessor::SplitterAudioProcessor() : AudioProcessor(BusesProperties()
         .withInput("Input", juce::AudioChannelSet::stereo(), true)
-#endif
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)
-#endif
-    )
-#endif
-    ,
-    m_filter(nullptr), m_buffer(nullptr)
+    ), m_filter(nullptr), m_buffer(nullptr)
 {
     addParameter(channel0 = new juce::AudioParameterFloat("0x00", "ch0", 0.0f, 1.0f, 1.0f));
     addParameter(channel1 = new juce::AudioParameterFloat("0x01", "ch1", 0.0f, 1.0f, 1.0f));
@@ -34,18 +25,15 @@ SplitterAudioProcessor::SplitterAudioProcessor()
     addParameter(channel4 = new juce::AudioParameterFloat("0x04", "ch4", 0.0f, 1.0f, 1.0f));
 
     std::error_code err;
-    auto models_path =
-#ifdef OSX
-        juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getParentDirectory().getChildFile("Resources")
-#endif 
-        juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
-
-    DBG("here: " << models_path);
-    DBG(models_path);
+    auto models_path = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
+    
     spleeter::Initialize(models_path.toStdString(), { spleeter::SeparationType::TwoStems }, err);
     m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::TwoStems);
-    m_filter->set_extra_frame_latency(20);  // TODO: might be a lot...
+    m_filter->set_extra_frame_latency(10);  // TODO: might be a lot...
     m_filter->Init(err);
+    DBG("model path: " << models_path);
+    DBG("error msg:  " << err.message());
+    DBG("error msg:  " << err.value());
 }
 
 SplitterAudioProcessor::~SplitterAudioProcessor() 
@@ -116,7 +104,7 @@ void SplitterAudioProcessor::changeProgramName(int index, const juce::String& ne
 }
 
 //==============================================================================
-void SplitterAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) 
+void SplitterAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     // resample to 44100Hz
     m_in_interpolator.clear();
@@ -176,7 +164,7 @@ void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-
+    DBG("Input: " << totalNumInputChannels << " Output: " << totalNumOutputChannels);
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
@@ -226,11 +214,11 @@ void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     }
 
     // convert to stereo
-    m_filter->set_volume(0, static_cast<double>(channel0->get()));
-    m_filter->set_volume(1, static_cast<double>(channel1->get()));
-    //m_filter->set_volume(2, static_cast<double>(channel2->get()));
-    //m_filter->set_volume(3, static_cast<double>(channel3->get()));
-    //m_filter->set_volume(4, static_cast<double>(channel4->get()));
+    m_filter->set_volume(0, static_cast<float>(channel0->get()));
+    m_filter->set_volume(1, static_cast<float>(channel1->get()));
+    //m_filter->set_volume(2, static_cast<float>(channel2->get()));
+    //m_filter->set_volume(3, static_cast<float>(channel3->get()));
+    //m_filter->set_volume(4, static_cast<float>(channel4->get()));
     m_filter->ProcessBlock(m_buffer.get());
 
     if (totalNumInputChannels == 2) 
@@ -271,16 +259,20 @@ juce::AudioProcessorEditor* SplitterAudioProcessor::createEditor()
 //==============================================================================
 void SplitterAudioProcessor::getStateInformation(juce::MemoryBlock& destData) 
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    juce::MemoryOutputStream(destData, true).writeFloat(*channel0);
+    juce::MemoryOutputStream(destData, true).writeFloat(*channel1);
+    juce::MemoryOutputStream(destData, true).writeFloat(*channel2);
+    juce::MemoryOutputStream(destData, true).writeFloat(*channel3);
+    juce::MemoryOutputStream(destData, true).writeFloat(*channel4);
 }
 
 void SplitterAudioProcessor::setStateInformation(const void* data, int sizeInBytes) 
 {
-    // You should use this method to restore your parameters from this memory
-    // block,
-    // whose contents will have been created by the getStateInformation() call.
+    channel0->setValueNotifyingHost(juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readFloat());
+    channel1->setValueNotifyingHost(juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readFloat());
+    channel2->setValueNotifyingHost(juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readFloat());
+    channel3->setValueNotifyingHost(juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readFloat());
+    channel4->setValueNotifyingHost(juce::MemoryInputStream(data, static_cast<size_t> (sizeInBytes), false).readFloat());
 }
 
 //==============================================================================
