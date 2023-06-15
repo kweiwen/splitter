@@ -3,6 +3,12 @@
 #include <JuceHeader.h>
 #include "spleeter_filter/filter.h"
 
+#ifdef _DEBUG
+#pragma comment(lib, "rtffd.lib")
+#else
+#pragma comment(lib, "rtff.lib")
+#endif
+
 class SplitterAudioProcessor : public juce::AudioProcessor 
 {
 public:

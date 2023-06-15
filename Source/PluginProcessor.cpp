@@ -40,8 +40,10 @@ SplitterAudioProcessor::SplitterAudioProcessor()
 #endif 
         juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
 
-    spleeter::Initialize(models_path.toStdString(), { spleeter::SeparationType::FiveStems }, err);
-    m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::FiveStems);
+    DBG("here: " << models_path);
+    DBG(models_path);
+    spleeter::Initialize(models_path.toStdString(), { spleeter::SeparationType::TwoStems }, err);
+    m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::TwoStems);
     m_filter->set_extra_frame_latency(20);  // TODO: might be a lot...
     m_filter->Init(err);
 }
@@ -131,9 +133,9 @@ void SplitterAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     // Initialize the buffer
     m_filter->set_volume(0, 1.0);
     m_filter->set_volume(1, 1.0);
-    m_filter->set_volume(2, 1.0);
-    m_filter->set_volume(3, 1.0);
-    m_filter->set_volume(4, 1.0);
+    //m_filter->set_volume(2, 1.0);
+    //m_filter->set_volume(3, 1.0);
+    //m_filter->set_volume(4, 1.0);
     m_filter->set_block_size(block_size);
     m_buffer = std::make_shared<rtff::AudioBuffer>(block_size, 2);
 
@@ -226,9 +228,9 @@ void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     // convert to stereo
     m_filter->set_volume(0, static_cast<double>(channel0->get()));
     m_filter->set_volume(1, static_cast<double>(channel1->get()));
-    m_filter->set_volume(2, static_cast<double>(channel2->get()));
-    m_filter->set_volume(3, static_cast<double>(channel3->get()));
-    m_filter->set_volume(4, static_cast<double>(channel4->get()));
+    //m_filter->set_volume(2, static_cast<double>(channel2->get()));
+    //m_filter->set_volume(3, static_cast<double>(channel3->get()));
+    //m_filter->set_volume(4, static_cast<double>(channel4->get()));
     m_filter->ProcessBlock(m_buffer.get());
 
     if (totalNumInputChannels == 2) 
