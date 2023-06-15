@@ -1,30 +1,33 @@
- #pragma once
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin editor.
+
+  ==============================================================================
+*/
+
+#pragma once
 
 #include <JuceHeader.h>
-#include <list>
-#include <utility>
 #include "PluginProcessor.h"
 
-class SplitterAudioProcessorEditor : public juce::AudioProcessorEditor 
+//==============================================================================
+/**
+*/
+class SplitterAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    SplitterAudioProcessorEditor(SplitterAudioProcessor &);
+    SplitterAudioProcessorEditor (SplitterAudioProcessor&);
     ~SplitterAudioProcessorEditor() override;
-    
-    void paint(juce::Graphics &) override;
+
+    //==============================================================================
+    void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
-    void UpdateVolumes();
- 
-    SplitterAudioProcessor &AudioProcessor;
-    juce::Slider vocals_volume_slider;
-    juce::Slider drums_volume_slider;
-    juce::Slider bass_volume_slider;
-    juce::Slider piano_volume_slider;
-    juce::Slider other_volume_slider;
-    
-    std::list<std::pair<std::string, juce::Slider*>> volume_sliders;
-    
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SplitterAudioProcessorEditor)
+    // This reference is provided as a quick way for your editor to
+    // access the processor object that created it.
+    SplitterAudioProcessor& audioProcessor;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SplitterAudioProcessorEditor)
 };
