@@ -15,11 +15,11 @@
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
-    <VS2022 targetFolder="Builds/VisualStudio2022" extraCompilerFlags="-ID:\zengkuiwen\Desktop\splitter\external\spleeterpp\build\install\include&#10;-ID:\zengkuiwen\Desktop\splitter\external\eigen"
-            extraLinkerFlags="/LIBPATH:D:\zengkuiwen\Desktop\splitter\external\spleeterpp\build\install\lib"
+    <VS2022 targetFolder="Builds/VisualStudio2022" extraCompilerFlags="-ID:\Project\splitter\external\spleeterpp\build\install\include&#10;-ID:\Project\splitter\external\eigen"
+            extraLinkerFlags="/LIBPATH:D:\Project\splitter\external\spleeterpp\build\install\lib"
             externalLibraries="tensorflow.lib;&#10;spleeter_filter.lib;&#10;spleeter_common.lib;&#10;rtff.lib;&#10;artff.lib;&#10;mkl_core.lib;&#10;mkl_intel_lp64.lib;&#10;mkl_sequential.lib;">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" targetName="splitter"/>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="splitter" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot;&#10;xcopy &quot;../../external/spleeterpp/build/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="splitter" postbuildCommand="if not exist &quot;$(TargetDir)models&quot; mkdir &quot;$(TargetDir)models&quot;&#10;xcopy &quot;../../external/spleeterpp/build/install/models/filter&quot; &quot;$(TargetDir)models&quot; /s /e /Y"/>
       </CONFIGURATIONS>
       <MODULEPATHS>

@@ -25,26 +25,24 @@ SplitterAudioProcessor::SplitterAudioProcessor()
                          )
 #endif
       ,
-      m_filter(nullptr), m_buffer(nullptr), m_vocals_volume(1.0),
-      m_bass_volume(1.0), m_drums_volume(1.0), m_piano_volume(1.0),
-      m_other_volume(1.0) {
+      m_filter(nullptr), m_buffer(nullptr)
+{
+    addParameter(channel0 = new juce::AudioParameterFloat("0x00", "ch0", 0.0f, 1.0f, 1.0f));
+    addParameter(channel1 = new juce::AudioParameterFloat("0x01", "ch1", 0.0f, 1.0f, 1.0f));
+    addParameter(channel2 = new juce::AudioParameterFloat("0x02", "ch2", 0.0f, 1.0f, 1.0f));
+    addParameter(channel3 = new juce::AudioParameterFloat("0x03", "ch3", 0.0f, 1.0f, 1.0f));
+    addParameter(channel4 = new juce::AudioParameterFloat("0x04", "ch4", 0.0f, 1.0f, 1.0f));
 
   std::error_code err;
   auto models_path =
-      juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile)
-          .getParentDirectory()
 #ifdef OSX
-          .getParentDirectory()
-          .getChildFile("Resources")
-#endif  // OSX
-          .getChildFile("models")
-          .getFullPathName();
+      juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getParentDirectory().getChildFile("Resources")
+#endif 
+      juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile).getParentDirectory().getChildFile("models").getFullPathName();
 
-  spleeter::Initialize(models_path.toStdString(),
-                       {spleeter::SeparationType::FiveStems}, err);
-  m_filter =
-      std::make_shared<spleeter::Filter>(spleeter::SeparationType::FiveStems);
-  m_filter->set_extra_frame_latency(10);  // TODO: might be a lot...
+  spleeter::Initialize(models_path.toStdString(),{spleeter::SeparationType::FiveStems}, err);
+  m_filter = std::make_shared<spleeter::Filter>(spleeter::SeparationType::FiveStems);
+  m_filter->set_extra_frame_latency(20);  // TODO: might be a lot...
   m_filter->Init(err);
 }
 
@@ -112,62 +110,16 @@ void SplitterAudioProcessor::prepareToPlay(double sampleRate,
   m_interpolation_ratio = static_cast<float>(block_size) / samplesPerBlock;
   
   // Initialize the buffer
-  m_filter->set_volume(0, m_vocals_volume);
-  m_filter->set_volume(1, m_drums_volume);
-  m_filter->set_volume(2, m_bass_volume);
-  m_filter->set_volume(3, m_piano_volume);
-  m_filter->set_volume(4, m_other_volume);
+  m_filter->set_volume(0, 1.0);
+  m_filter->set_volume(1, 1.0);
+  m_filter->set_volume(2, 1.0);
+  m_filter->set_volume(3, 1.0);
+  m_filter->set_volume(4, 1.0);
   m_filter->set_block_size(block_size);
   m_buffer = std::make_shared<rtff::AudioBuffer>(block_size, 2);
   
   // Latency
   setLatencySamples(m_filter->FrameLatency() * (1.0 / m_interpolation_ratio));
-}
-
-void SplitterAudioProcessor::setVocalsVolume(double value) {
-  m_vocals_volume = value;
-  if (m_filter) {
-    m_filter->set_volume(0, m_vocals_volume);
-  }
-}
-double SplitterAudioProcessor::getVocalsVolume() const {
-  return m_vocals_volume;
-}
-void SplitterAudioProcessor::setBassVolume(double value) {
-  m_bass_volume = value;
-  if (m_filter) {
-    m_filter->set_volume(2, m_bass_volume);
-  }
-}
-double SplitterAudioProcessor::getBassVolume() const {
-  return m_bass_volume;
-}
-void SplitterAudioProcessor::setDrumsVolume(double value) {
-  m_drums_volume = value;
-  if (m_filter) {
-    m_filter->set_volume(1, m_drums_volume);
-  }
-}
-double SplitterAudioProcessor::getDrumsVolume() const {
-  return m_drums_volume;
-}
-void SplitterAudioProcessor::setPianoVolume(double value) {
-  m_piano_volume = value;
-  if (m_filter) {
-    m_filter->set_volume(3, m_piano_volume);
-  }
-}
-double SplitterAudioProcessor::getPianoVolume() const {
-  return m_piano_volume;
-}
-void SplitterAudioProcessor::setOtherVolume(double value) {
-  m_other_volume = value;
-  if (m_filter) {
-    m_filter->set_volume(4, m_other_volume);
-  }
-}
-double SplitterAudioProcessor::getOtherVolume() const {
-  return m_other_volume;
 }
 
 void SplitterAudioProcessor::releaseResources() {
@@ -249,6 +201,11 @@ void SplitterAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   }
   
   // convert to stereo
+  m_filter->set_volume(0, static_cast<double>(channel0->get()));
+  m_filter->set_volume(1, static_cast<double>(channel1->get()));
+  m_filter->set_volume(2, static_cast<double>(channel2->get()));
+  m_filter->set_volume(3, static_cast<double>(channel3->get()));
+  m_filter->set_volume(4, static_cast<double>(channel4->get()));
   m_filter->ProcessBlock(m_buffer.get());
   
   if (totalNumInputChannels == 2) {
