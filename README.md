@@ -21,7 +21,7 @@ git clone https://github.com/gvne/spleeterpp.git && cd spleeterpp
 git checkout 586a5dc503c73fc4975aca675432a280d6ea860f
 mkdir build && cd build
 mkdir Release && Release
-cmake -Drtff_use_mkl=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/install ..
+cmake -Drtff_use_mkl=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/install ../..
 cmake --build . --config Release --target INSTALL
 ```
 
@@ -32,6 +32,6 @@ git clone https://github.com/gvne/spleeterpp.git && cd spleeterpp
 git checkout 586a5dc503c73fc4975aca675432a280d6ea860f
 mkdir build && cd build
 mkdir Debug && Debug
-cmake -Drtff_use_mkl=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/install ..
+cmake -Drtff_use_mkl=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/install ../..
 cmake --build . --config Debug --target INSTALL
 ```
